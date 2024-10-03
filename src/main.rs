@@ -6,15 +6,13 @@ use std::{
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = core::result::Result<T, Error>;
 
-
 fn main() -> Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:7878")?;
+    let listener = TcpListener::bind("127.0.0.1:7879")?;
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                let http_request = handle_connection(stream)?;
-                println!("Request: {:#?}", http_request);
+                handle_connection(stream)?;
             }
             Err(e) => {
                 println!("Connection failed: {e}");
@@ -23,6 +21,7 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
+
 pub enum MethodType {
     Get,
     Post,
@@ -41,11 +40,12 @@ impl MethodType {
         match method {
             "GET" => Ok(MethodType::Get),
             "POST"=> Ok(MethodType::Post),
-            "Delete" => Ok(MethodType::Delete),
+            "DELETE" => Ok(MethodType::Delete),
             _ => Err("Unkown HTTP method".into())
         }
     }
 }
+
 pub struct RequestLine {
     method: MethodType,
     request_target: String,
@@ -59,9 +59,9 @@ impl RequestLine {
         if parts.len() != 3 {
             return Err(format!("Invalid request line format: {}", request_line).into());
         }
-
+        
         let method = MethodType::from_str(parts[0])?;
-
+        
         let request_target = parts[1].to_string();
         if request_target.is_empty() {
             return Err(format!("Invalid request target: {}", request_target).into());
@@ -74,23 +74,8 @@ impl RequestLine {
     }
 }
 
-struct Response {
-    response_line: RequestLine,
-    contents: String,
-    bytes_sent: usize,
-}
-
-impl Response {
-    pub fn build(path: String) {
-
-    }
-    pub fn send(client_fd: i32) {
-
-    }
-}
-
 pub struct Request {
-    request_line: String,
+    request_line: RequestLine,
     headers: Vec<String>
 }
 
@@ -102,9 +87,11 @@ impl Request {
             Some(Err(e)) => return Err(Box::new(e)),
             None => return Err("Request line not found".into()),
         };
+        let request_line = RequestLine::build(request_line)?;
 
         let headers: Vec<String> = lines
-        .take_while(|result| match result {
+        .take_while(|result| 
+            match result {
             Ok(line) => !line.is_empty(),
             Err(_) => false,
         })
@@ -114,21 +101,73 @@ impl Request {
     }
 }
 
-fn handle_connection(mut stream: TcpStream) -> Result<Vec<String>> {
-    let buf_reader = BufReader::new(&mut stream);
-    
-    let http_request = buf_reader
-    .lines()
-    .take_while(|result| match result {
-        Ok(line) => !line.is_empty(),
-        Err(_) => false
-    })
-    .collect::<std::result::Result<Vec<String>, std::io::Error>>()?;
+pub enum StatusCode {
+    Ok,
+    NotFound,
+}
 
-    let status_line = "HTTP/1.1 200 OK";
-    let contents = fs::read_to_string("hello.html")?;
-    let length = contents.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
-    stream.write_all(response.as_bytes())?;
-    Ok(http_request)
+impl StatusCode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            StatusCode::Ok => "200 OK",
+            StatusCode::NotFound => "404 Not Found",
+        }
+    }
+}
+
+pub struct StatusLine {
+    version: String,
+    status_code: StatusCode,
+}
+
+impl StatusLine {
+    pub fn new(version: &String, status_code: StatusCode) -> StatusLine {
+        Self{ version: version.to_string(), status_code}
+    }
+
+    pub fn as_str(&self) -> String {
+        format!("{} {}", self.version, self.status_code.as_str())
+    }
+}
+
+pub struct Response {
+    status_line: StatusLine,
+    contents: String,
+}
+
+impl Response {
+    pub fn new(status_line: StatusLine, contents: String) -> Response {
+        Response{ status_line, contents}
+    }
+
+    pub fn build(version: String, request_target: String) -> Result<Response> {
+        let contents = fs::read_to_string(format!(".{}", &request_target));
+        match contents {
+            Ok(contents) => Ok(Response::new(StatusLine::new(&version, StatusCode::Ok), contents)),
+            Err(_) => Ok(Response::new(StatusLine::new(&version, StatusCode::NotFound), String::new())),
+        }
+    }
+
+    pub fn send(&self, client_stream: &mut TcpStream) -> Result<()> {
+        let length = self.contents.len();
+        let response = format!(
+            "{}\r\nContent-length: {} \r\n\r\n{}",
+            self.status_line.as_str(),
+            length,
+            self.contents
+        );
+
+        client_stream.write_all(response.as_bytes())?;
+        Ok(())
+
+    }
+}
+
+fn handle_connection(mut stream: TcpStream) -> Result<()> {
+    let buf_reader = BufReader::new(&mut stream);
+    let http_request = Request::build(buf_reader)?;
+    let http_response = Response::build(
+        http_request.request_line.version, http_request.request_line.request_target)?;
+    http_response.send(&mut stream)?;
+    Ok(())
 }
