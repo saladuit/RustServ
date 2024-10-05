@@ -1,4 +1,6 @@
 use crate::error::Result;
+
+#[derive(PartialEq, Debug)]
 pub enum MethodType {
     Get,
     Post,
