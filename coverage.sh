@@ -23,6 +23,6 @@ cargo llvm-cov test --branch --verbose
 
 # Generate the HTML coverage report
 echo "Generating HTML coverage report..."
-cargo llvm-cov --html --output-dir="$OUTPUT_DIR"
+cargo llvm-cov --html --branch --output-dir="$OUTPUT_DIR"
 
 echo "HTML coverage report generated in the '$OUTPUT_DIR' directory."
