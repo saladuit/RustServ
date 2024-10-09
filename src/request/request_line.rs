@@ -10,28 +10,28 @@ pub struct RequestLine {
 
 impl RequestLine {
     pub fn build(request_line: String) -> Result<RequestLine> {
-        let parts: Vec<&str> = request_line.split_ascii_whitespace().collect();
+        let parts: Vec<&str> = request_line.split_whitespace().collect();
 
         if parts.len() < 1 {
-            return Err(format!("Too little HTTP request line arguments: {}", request_line).into());
+            return Err(format!("Too little HTTP request line arguments").into());
         }
         if parts.len() > 3 {
             return Err(format!("Too many HTTP request line arguments: {}", request_line).into());
+        }
+        if parts.len() == 1 {
+            return Err(format!("No request target in HTTP request line argument: {}", request_line).into());
+        }
+        if parts.len() == 2 {
+            return Err(format!("HTTP version missing in HTTP request line argument missing: {}", request_line).into());
         }
         
         let method = MethodType::from_str(parts[0])?;
         
         
         let request_target = parts[1].to_string();
-        if parts.len() == 1 {
-            return Err(format!("No request target in HTTP request line argument").into());
-        }
-        if parts.len() == 2 {
-            return Err(format!("HTTP version missing in HTTP request line argument missing").into());
-        }
         let version = parts[2].to_string();
         if !version.starts_with("HTTP/") {
-            return Err(format!("Invalid HTTP version formatting: {}", version).into());
+            return Err(format!("Invalid HTTP version formatting: {}", request_line).into());
         }
         Ok(Self {method, request_target, version})
     }
@@ -39,6 +39,8 @@ impl RequestLine {
 
 #[cfg(test)]
 mod unit_tests {
+
+    use crate::request;
 
     use super::*;
     
@@ -53,18 +55,22 @@ mod unit_tests {
 
     }
     #[test]
+    fn empty_request_line() {
+        let result = RequestLine::build("".to_string());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Too little HTTP request line arguments");
+    }
+    #[test]
     fn get_request_line() {
         assert_valid_request_line("GET", "/index.html", "HTTP/1.1");
     }
     #[test]
-    fn empty_request_target() {
+    fn one_request_line_argument() {
         let method = "GET";
-        let request_target = " ";
-        let version = "";
-        let request_line = format!("{} {} {}", method, request_target, version);
+        let request_line = format!("{}", method);
         let result = RequestLine::build(request_line);
         assert!(result.is_err());
-        // assert_eq!()
+        assert_eq!(result.unwrap_err().to_string(), "No request target in HTTP request line argument: GET");
 
     }
     #[test]
@@ -76,20 +82,35 @@ mod unit_tests {
         assert_valid_request_line("POST", "/index.html", "HTTP/1.1");
     }
     #[test]
-    fn short_invalid_request_target() {
+    fn missing_request_line_argument() {
         let request_line = "GET /index.html".to_string();
         let result = RequestLine::build(request_line);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(),
-    "Invalid request line format: GET /index.html");
+    "HTTP version missing in HTTP request line argument missing: GET /index.html");
     }
     #[test]
-    fn long_invalid_request_target() {
+    fn extra_request_line_argument() {
         let request_line = "GET /index.html HTTP/1.1 Extra".to_string();
         let result = RequestLine::build(request_line);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(),
     "Too many HTTP request line arguments: GET /index.html HTTP/1.1 Extra");
+    }
+    #[test]
+    fn invalid_http_version_formatting() {
+        let request_line = "GET /index.html HTT/1.1".to_string();
+        let result = RequestLine::build(request_line);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Invalid HTTP version formatting: GET /index.html HTT/1.1");
+    }
+
+    #[test]
+    fn invalid_method() {
+        let request_line = "INVALID /index.html HTTP/1.1".to_string();
+        let result = RequestLine::build(request_line);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Unkown HTTP method");
     }
     
     
