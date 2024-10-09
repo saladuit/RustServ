@@ -33,11 +33,7 @@ mod unit_tests {
         );
         assert_eq!(
             response.get_response(),
-            "HTTP/1.1 200 OK\r\nContent-length: 12\r\n\r\nHello World!".as_bytes(),
-            "left: {}\nright: {}",
-            response.response,
-            ""
-        );
+            "HTTP/1.1 200 OK\r\nContent-length: 12\r\n\r\nHello World!".as_bytes());
     }
     #[test]
     fn not_found_reponse() {
@@ -47,10 +43,6 @@ mod unit_tests {
         );
         assert_eq!(
             response.get_response(),
-            "HTTP/1.1 404 Not Found\r\nContent-length: 0\r\n\r\n".as_bytes(),
-            "left: {}\nright: {}",
-            response.response,
-            ""
-        );
+            "HTTP/1.1 404 Not Found\r\nContent-length: 0\r\n\r\n".as_bytes());
     }
 }

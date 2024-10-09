@@ -4,9 +4,9 @@
 OUTPUT_DIR="."
 
 # Remove old coverage report directory
-if [ -d "$OUTPUT_DIR" ]; then
+if [ -d "$OUTPUT_DIR/html" ]; then
     echo "Removing old coverage report directory..."
-    rm -rf "$OUTPUT_DIR"
+    rm -rf "$OUTPUT_DIR/html"
 fi
 
 # Clean the project
