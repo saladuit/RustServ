@@ -39,9 +39,6 @@ impl RequestLine {
 
 #[cfg(test)]
 mod unit_tests {
-
-    use crate::request;
-
     use super::*;
     
     fn assert_valid_request_line(method: &str, request_target: &str, version: &str) {
