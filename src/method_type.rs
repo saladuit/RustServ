@@ -18,9 +18,9 @@ impl MethodType {
     pub fn from_str(method: &str) -> Result<MethodType> {
         match method {
             "GET" => Ok(MethodType::Get),
-            "POST"=> Ok(MethodType::Post),
+            "POST" => Ok(MethodType::Post),
             "DELETE" => Ok(MethodType::Delete),
-            _ => Err("Unkown HTTP method".into())
+            _ => Err("Unkown HTTP method".into()),
         }
     }
 }

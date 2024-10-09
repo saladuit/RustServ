@@ -1,11 +1,11 @@
 use std::io::{prelude::*, BufReader};
-    
+
 use crate::error::Result;
 use crate::request::request_line::RequestLine;
 
 pub struct Request {
     pub request_line: RequestLine,
-    pub headers: Vec<String>
+    pub headers: Vec<String>,
 }
 
 impl Request {
@@ -19,14 +19,16 @@ impl Request {
         let request_line = RequestLine::build(request_line)?;
 
         let headers: Vec<String> = lines
-        .take_while(|result| 
-            match result {
-            Ok(line) => !line.is_empty(),
-            Err(_) => false,
-        })
-        .collect::<std::result::Result<Vec<String>, std::io::Error>>()?;
+            .take_while(|result| match result {
+                Ok(line) => !line.is_empty(),
+                Err(_) => false,
+            })
+            .collect::<std::result::Result<Vec<String>, std::io::Error>>()?;
 
-        Ok(Self {request_line, headers})
+        Ok(Self {
+            request_line,
+            headers,
+        })
     }
 }
 
@@ -37,19 +39,20 @@ mod unit_tests {
 
     fn get_mock_request(request: Vec<String>) -> BufReader<Cursor<Vec<u8>>> {
         let request_data = VecDeque::from(request)
-        .into_iter()
-        .flat_map(|s| s.into_bytes())
-        .collect();
+            .into_iter()
+            .flat_map(|s| s.into_bytes())
+            .collect();
         let cursor = Cursor::new(request_data);
         BufReader::new(cursor)
     }
 
     #[test]
     fn test_request_build_success() {
-        let buf_reader = get_mock_request(
-            vec!["GET / HTTP/1.1\r\n".to_string(),
+        let buf_reader = get_mock_request(vec![
+            "GET / HTTP/1.1\r\n".to_string(),
             "Host: example.com\r\n".to_string(),
-             "\r\n".to_string()]);
+            "\r\n".to_string(),
+        ]);
         let request = Request::build(buf_reader);
         assert!(request.is_ok());
         let request = request.unwrap();
