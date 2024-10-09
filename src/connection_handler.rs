@@ -1,7 +1,7 @@
 use std::fs;
 use std::{
     net::TcpStream,
-    io::BufReader,
+    io::{BufReader, prelude::*},
 };
 
 use crate::error::Result;
@@ -21,12 +21,19 @@ impl<'a> ConnectionHandler<'a> {
     pub fn handle_connection(&mut self) -> Result<()> {
         let buf_reader = BufReader::new(&mut *self.stream);
         let http_request = Request::build(buf_reader)?;
+
         let contents = fs::read_to_string(http_request.request_line.request_target);
         let http_response  = match contents {
             Ok(contents) => Response::new(StatusLine::new(&http_request.request_line.version, StatusCode::Ok), contents),
             Err(_) => Response::new(StatusLine::new(&http_request.request_line.version, StatusCode::NotFound), String::new()),
         };
-        http_response.send(&mut self.stream)?;
+        
+        self.send(http_response)?;
+        Ok(())
+    }
+
+    fn send(&mut self, response: Response) -> Result<()> {
+        self.stream.write_all(response.response.as_bytes())?;
         Ok(())
     }
 }

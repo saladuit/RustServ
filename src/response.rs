@@ -33,7 +33,7 @@ impl StatusLine {
 }
 
 pub struct Response {
-    response: String,
+    pub response: String,
 }
 
 impl Response {
