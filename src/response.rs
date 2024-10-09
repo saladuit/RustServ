@@ -1,7 +1,6 @@
 use std::{
-    fs,
     io::prelude::*, 
-    net::{TcpStream}};
+    net::TcpStream};
 use crate::error::Result;
 
 pub enum StatusCode {
@@ -34,34 +33,30 @@ impl StatusLine {
 }
 
 pub struct Response {
-    status_line: StatusLine,
-    contents: String,
+    response: String,
 }
 
 impl Response {
     pub fn new(status_line: StatusLine, contents: String) -> Response {
-        Response{ status_line, contents}
-    }
-
-    pub fn build(version: String, request_target: String) -> Result<Response> {
-        let contents = fs::read_to_string(format!(".{}", &request_target));
-        match contents {
-            Ok(contents) => Ok(Response::new(StatusLine::new(&version, StatusCode::Ok), contents)),
-            Err(_) => Ok(Response::new(StatusLine::new(&version, StatusCode::NotFound), String::new())),
-        }
+        Response{ response: format!(
+            "{}\r\nContent-length: {} \r\n\r\n{}",
+            status_line.as_str(),
+            contents.len(),
+            contents
+        )}
     }
 
     pub fn send(&self, client_stream: &mut TcpStream) -> Result<()> {
-        let length = self.contents.len();
-        let response = format!(
-            "{}\r\nContent-length: {} \r\n\r\n{}",
-            self.status_line.as_str(),
-            length,
-            self.contents
-        );
-
-        client_stream.write_all(response.as_bytes())?;
+        client_stream.write_all(self.response.as_bytes())?;
         Ok(())
 
     }
 }
+
+// #[cfg(tests)]
+// mod unit_tests {
+//     use super::*;
+
+//     #[test]
+
+// }
